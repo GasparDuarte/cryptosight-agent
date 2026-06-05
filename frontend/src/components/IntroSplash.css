@@ -1,0 +1,445 @@
+/* =====================================================================
+   IntroSplash — Payday 2 "masking up" breach screen (auto-play).
+   Reuses the CRIME.NET theme tokens (--cyan, --font-display, …) from
+   index.css so it sits seamlessly on top of the terminal.
+   ===================================================================== */
+
+.intro {
+  position: fixed;
+  inset: 0;
+  z-index: 100000;
+  overflow: hidden;
+  font-family: var(--font-mono);
+  color: var(--cyan);
+  cursor: pointer; /* click anywhere to skip */
+  user-select: none;
+  -webkit-user-select: none;
+}
+.intro.intro-opening {
+  pointer-events: none; /* let the revealed dashboard be usable immediately */
+}
+
+/* center glow + faint green core, layered above the doors, below the content */
+.intro::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  background:
+    radial-gradient(58% 54% at 50% 46%, rgba(0, 234, 255, 0.1), transparent 60%),
+    radial-gradient(40% 38% at 50% 50%, rgba(57, 255, 20, 0.05), transparent 70%);
+  transition: opacity 0.4s ease;
+}
+.intro.intro-opening::before {
+  opacity: 0;
+}
+
+/* ---------------------------------------------------- armored doors */
+.intro-door {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 50%;
+  z-index: 1;
+  background:
+    repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.5) 0 2px, rgba(8, 12, 16, 0.55) 2px 4px),
+    radial-gradient(140% 90% at 50% -10%, rgba(0, 60, 74, 0.25), transparent 60%),
+    linear-gradient(180deg, #070a0e, #030506);
+  transition: transform 0.5s cubic-bezier(0.7, 0.02, 0.25, 1);
+  will-change: transform;
+}
+/* per-door scanlines */
+.intro-door::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(0deg, rgba(0, 234, 255, 0.035) 0 1px, transparent 1px 3px);
+  opacity: 0.6;
+}
+/* glowing seam where the doors meet (exactly centered) */
+.intro-door::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: linear-gradient(180deg, transparent, var(--cyan), transparent);
+  box-shadow: 0 0 16px rgba(0, 234, 255, 0.6);
+  opacity: 0.5;
+}
+.intro-door-l {
+  left: 0;
+}
+.intro-door-l::after {
+  right: 0;
+}
+.intro-door-r {
+  right: 0;
+}
+.intro-door-r::after {
+  left: 0;
+}
+.intro.intro-opening .intro-door-l {
+  transform: translateX(-101%);
+}
+.intro.intro-opening .intro-door-r {
+  transform: translateX(101%);
+}
+
+/* ---------------------------------------------------- stage */
+.intro-stage {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 26px;
+  transition: opacity 0.35s ease;
+}
+.intro.intro-opening .intro-stage {
+  opacity: 0;
+}
+/* corruption burst on breach (starts just after the white flash) */
+.intro.intro-breached .intro-stage {
+  animation: intro-glitch 0.2s steps(2, end) 1 0.08s;
+}
+
+.intro-head {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.intro-kicker {
+  font-size: 13px;
+  letter-spacing: 0.3em;
+  color: var(--cyan-dim);
+}
+.intro-target {
+  font-family: var(--font-display);
+  font-size: clamp(18px, 3vw, 26px);
+  letter-spacing: 0.08em;
+  color: #eafffb;
+  text-shadow: 0 0 12px rgba(0, 234, 255, 0.6);
+}
+
+/* ---------------------------------------------------- radial loader */
+.intro-ring-wrap {
+  position: relative;
+  width: 240px;
+  height: 240px;
+  display: grid;
+  place-items: center;
+}
+.intro-ring {
+  position: absolute;
+  inset: 0;
+  filter: drop-shadow(0 0 6px rgba(0, 234, 255, 0.25));
+}
+.ring-track {
+  fill: none;
+  stroke: rgba(120, 189, 206, 0.22);
+  stroke-width: 4;
+  stroke-dasharray: 2 10;
+}
+.ring-fill {
+  fill: none;
+  stroke: var(--cyan);
+  stroke-width: 7;
+  stroke-linecap: round;
+  filter: drop-shadow(0 0 8px rgba(0, 234, 255, 0.9));
+  transition: stroke-dashoffset 0.08s linear;
+}
+
+.intro-core {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  opacity: calc(0.4 + var(--p, 0) * 0.6); /* brightens as the ring fills */
+  transition: opacity 0.1s linear;
+}
+.intro-pct {
+  font-family: var(--font-display);
+  font-size: 38px;
+  letter-spacing: 0.04em;
+  color: #eafffb;
+  text-shadow: 0 0 12px rgba(0, 234, 255, 0.7);
+}
+.intro-pct span {
+  font-size: 18px;
+  color: var(--cyan);
+  margin-left: 2px;
+}
+
+/* ---------------------------------------------------- status + linear meter */
+.intro-prompt {
+  font-size: 14px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--cyan-soft);
+  min-height: 18px;
+  text-align: center;
+}
+.intro-meter {
+  width: min(360px, 70vw);
+  height: 6px;
+  border: 1px solid var(--cyan-deep);
+  border-radius: 3px;
+  background: rgba(0, 234, 255, 0.08);
+  overflow: hidden;
+}
+.intro-meter-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #06808f, var(--cyan));
+  box-shadow: var(--glow-cyan);
+  transition: width 0.1s linear;
+}
+
+/* ---------------------------------------------------- live log feed */
+.intro-logs {
+  position: absolute;
+  left: clamp(14px, 4vw, 46px);
+  bottom: clamp(14px, 5vh, 44px);
+  z-index: 4;
+  width: min(560px, 72vw);
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 13px;
+  letter-spacing: 0.02em;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+.intro.intro-opening .intro-logs {
+  opacity: 0;
+}
+.intro-log {
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  animation: log-in 0.2s ease both;
+}
+.log-tag {
+  font-weight: bold;
+}
+.tag-info .log-tag {
+  color: var(--cyan);
+}
+.tag-ok .log-tag {
+  color: var(--green);
+}
+.tag-warn .log-tag {
+  color: var(--amber);
+}
+.tag-crit {
+  color: #ffb9bf;
+}
+.tag-crit .log-tag {
+  color: var(--crimson);
+}
+.intro-cursor {
+  color: var(--cyan);
+  animation: blink-soft 1s steps(2) infinite;
+}
+
+/* ---------------------------------------------------- skip */
+.intro-skip {
+  position: absolute;
+  top: 18px;
+  right: 20px;
+  z-index: 7;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  color: var(--cyan-dim);
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid var(--metal-edge);
+  border-radius: 4px;
+  padding: 5px 10px;
+  cursor: pointer;
+}
+.intro-skip:hover {
+  color: var(--cyan);
+  border-color: var(--cyan-dim);
+}
+.intro.intro-breached .intro-skip,
+.intro.intro-opening .intro-skip {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* ---------------------------------------------------- breach FX */
+.intro-flash {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  background: #eafffb;
+  opacity: 0;
+  pointer-events: none;
+}
+.intro.intro-breached .intro-flash {
+  animation: intro-flash 0.3s ease-out 1;
+}
+
+.intro-banner {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  opacity: 0;
+  pointer-events: none;
+}
+.intro.intro-breached .intro-banner,
+.intro.intro-opening .intro-banner {
+  opacity: 1;
+}
+.banner-main {
+  position: relative;
+  font-family: var(--font-display);
+  font-size: clamp(34px, 8vw, 92px);
+  letter-spacing: 0.06em;
+  color: #fff;
+  text-shadow: 0 0 18px rgba(0, 234, 255, 0.8), 0 0 44px rgba(0, 234, 255, 0.5);
+  animation: banner-pop 0.35s cubic-bezier(0.2, 1.4, 0.4, 1) 1, banner-glitch 0.3s steps(2) 2;
+}
+/* chromatic-aberration ghosts */
+.banner-main::before,
+.banner-main::after {
+  content: attr(data-text);
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  mix-blend-mode: screen;
+  opacity: 0.75;
+}
+.banner-main::before {
+  color: var(--crimson);
+  transform: translate(-3px, 0);
+}
+.banner-main::after {
+  color: var(--cyan);
+  transform: translate(3px, 0);
+}
+.banner-sub {
+  font-family: var(--font-mono);
+  font-size: clamp(13px, 2.4vw, 20px);
+  letter-spacing: 0.34em;
+  color: var(--green);
+  text-shadow: 0 0 12px rgba(57, 255, 20, 0.6);
+}
+
+/* ---------------------------------------------------- keyframes */
+@keyframes log-in {
+  from {
+    opacity: 0;
+    transform: translateX(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes intro-flash {
+  0% {
+    opacity: 0;
+  }
+  12% {
+    opacity: 0.96;
+  }
+  40% {
+    opacity: 0;
+  }
+  55% {
+    opacity: 0.35;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+@keyframes intro-glitch {
+  0% {
+    transform: translate(0, 0);
+    clip-path: inset(0 0 0 0);
+  }
+  25% {
+    transform: translate(-4px, 2px);
+    clip-path: inset(18% 0 42% 0);
+  }
+  50% {
+    transform: translate(4px, -2px);
+    clip-path: inset(60% 0 8% 0);
+  }
+  75% {
+    transform: translate(-3px, 1px);
+    clip-path: inset(8% 0 70% 0);
+  }
+  100% {
+    transform: translate(0, 0);
+    clip-path: inset(0 0 0 0);
+  }
+}
+@keyframes banner-pop {
+  0% {
+    transform: scale(0.6);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.08);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+@keyframes banner-glitch {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  25% {
+    transform: translate(-3px, 0);
+  }
+  50% {
+    transform: translate(3px, 0);
+  }
+  75% {
+    transform: translate(-2px, 0);
+  }
+}
+
+/* ---------------------------------------------------- accessibility */
+@media (prefers-reduced-motion: reduce) {
+  /* swap the door-split + glitch for a calm fade-out */
+  .intro.intro-opening {
+    opacity: 0;
+    transition: opacity 0.4s ease;
+  }
+  .intro.intro-opening .intro-door-l,
+  .intro.intro-opening .intro-door-r {
+    transform: none;
+  }
+  .intro-flash,
+  .intro.intro-breached .intro-stage,
+  .banner-main,
+  .intro-cursor {
+    animation: none !important;
+  }
+}
+
+@media (max-width: 880px) {
+  .intro-ring-wrap {
+    width: 200px;
+    height: 200px;
+  }
+}

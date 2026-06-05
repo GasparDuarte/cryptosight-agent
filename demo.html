@@ -1,0 +1,548 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CryptoSight Agent — Demo</title>
+    <!-- Chart.js via CDN (needs an internet connection) -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+    <style>
+      :root {
+        --bg: #0f1117; --bg-elev: #141722; --card: #1a1d27; --border: #272b36;
+        --primary: #3b82f6; --primary-hover: #2f6fe0; --text: #e6e8ee; --muted: #8b93a7;
+        --green: #22c55e; --red: #ef4444; --orange: #f59e0b; --purple: #a78bfa;
+        --radius: 14px; --shadow: 0 8px 28px rgba(0,0,0,.35);
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0; background: radial-gradient(1200px 600px at 80% -10%, #182033 0%, var(--bg) 55%);
+        color: var(--text); min-height: 100vh;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Inter, Helvetica, Arial, sans-serif;
+        -webkit-font-smoothing: antialiased;
+      }
+      .app { max-width: 1240px; margin: 0 auto; padding: 28px 22px 60px; display: flex; flex-direction: column; gap: 20px; }
+      .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; box-shadow: var(--shadow); }
+      .card-title { margin: 0 0 14px; font-size: 15px; font-weight: 600; }
+      .muted { color: var(--muted); font-size: 14px; }
+
+      .header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+      .brand { display: flex; align-items: center; gap: 14px; }
+      .logo { width: 46px; height: 46px; display: grid; place-items: center; border-radius: 12px; font-size: 24px; color: #fff;
+        background: linear-gradient(135deg, var(--primary), #6d28d9); box-shadow: 0 6px 18px rgba(59,130,246,.4); }
+      h1 { margin: 0; font-size: 24px; font-weight: 700; }
+      h1 span { color: var(--primary); }
+      .tagline { margin: 2px 0 0; font-size: 13px; color: var(--muted); }
+      .demo-pill { font-size: 11px; font-weight: 700; padding: 5px 11px; border-radius: 999px;
+        background: rgba(245,158,11,.12); color: var(--orange); border: 1px solid rgba(245,158,11,.35); }
+
+      .controls { display: grid; grid-template-columns: 1.2fr 1fr 1fr auto; gap: 22px; align-items: end; }
+      .control { display: flex; flex-direction: column; gap: 8px; }
+      .control label { font-size: 13px; color: var(--muted); font-weight: 500; }
+      .control-value { color: var(--primary); font-weight: 700; }
+      select { background: var(--bg-elev); color: var(--text); border: 1px solid var(--border); border-radius: 10px; padding: 11px 12px; font-size: 14px; cursor: pointer; }
+      select:focus { border-color: var(--primary); outline: none; }
+      input[type=range] { -webkit-appearance: none; appearance: none; width: 100%; height: 6px; border-radius: 999px; background: var(--border); cursor: pointer; }
+      input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; border-radius: 50%; background: var(--primary); border: 3px solid #0f1117; box-shadow: 0 0 0 1px var(--primary); }
+      .ticks { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); }
+      .tick.active { color: var(--primary); font-weight: 700; }
+      .btn-primary { background: var(--primary); color: #fff; border: none; border-radius: 10px; padding: 12px 26px; font-size: 14px; font-weight: 600; cursor: pointer; height: 44px; transition: background .15s; }
+      .btn-primary:hover:not(:disabled) { background: var(--primary-hover); }
+      .btn-primary:disabled { opacity: .6; cursor: not-allowed; }
+
+      .banner { border-radius: 10px; padding: 10px 14px; font-size: 13px; }
+      .banner.warn { background: rgba(245,158,11,.1); border: 1px solid rgba(245,158,11,.3); color: #fcd34d; }
+      .banner.err { background: rgba(239,68,68,.12); border: 1px solid rgba(239,68,68,.4); color: #fca5a5; }
+      .banner.ok { background: rgba(34,197,94,.1); border: 1px solid rgba(34,197,94,.3); color: #86efac; }
+      .hidden { display: none !important; }
+
+      .chart-note { font-size: 12px; color: var(--muted); margin-bottom: 8px; }
+      .rsi-title { margin-top: 18px; font-weight: 600; color: var(--text); }
+      canvas { max-width: 100%; }
+
+      .bottom-grid { display: grid; grid-template-columns: 1fr 1.1fr; gap: 20px; align-items: start; }
+
+      .timeline { list-style: none; margin: 0; padding: 0; position: relative; }
+      .timeline::before { content: ''; position: absolute; left: 17px; top: 6px; bottom: 6px; width: 2px; background: var(--border); }
+      .timeline-item { position: relative; padding: 0 0 18px 48px; opacity: 0; animation: fadeInUp .45s ease forwards; }
+      .timeline-item:last-child { padding-bottom: 0; }
+      .timeline-dot { position: absolute; left: 0; top: 0; width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center;
+        background: var(--bg-elev); border: 2px solid var(--primary); font-size: 16px; z-index: 1; }
+      .timeline-tool { font-family: ui-monospace, 'Cascadia Code', Consolas, monospace; font-size: 13px; font-weight: 700; color: var(--primary); }
+      .timeline-input { font-size: 12px; color: var(--muted); margin: 3px 0 6px; font-family: ui-monospace, monospace; }
+      .timeline-output { font-size: 13px; background: var(--bg-elev); border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; line-height: 1.5; }
+      @keyframes fadeInUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+      .report-badges { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
+      .badge { font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--border); }
+      .badge-symbol { background: rgba(59,130,246,.15); color: #93c5fd; border-color: rgba(59,130,246,.4); letter-spacing: .05em; }
+      .badge-date { background: var(--bg-elev); color: var(--muted); }
+      .badge-muted { background: var(--bg-elev); color: var(--muted); }
+      .markdown { font-size: 14px; line-height: 1.65; }
+      .markdown h2 { font-size: 18px; margin: 14px 0 8px; }
+      .markdown p { margin: 8px 0; }
+      .markdown strong { color: #fff; }
+      .markdown em { color: var(--muted); font-style: italic; }
+      .markdown code { font-family: ui-monospace, monospace; background: var(--bg-elev); padding: 1px 6px; border-radius: 5px; font-size: 12.5px; }
+      .markdown blockquote { border-left: 3px solid var(--orange); margin: 10px 0; padding: 4px 12px; color: var(--muted); background: rgba(245,158,11,.06); border-radius: 0 8px 8px 0; }
+
+      .footer { text-align: center; color: var(--muted); font-size: 12px; padding-top: 8px; border-top: 1px solid var(--border); }
+      .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid rgba(255,255,255,.4); border-top-color: #fff; border-radius: 50%; animation: spin .7s linear infinite; vertical-align: -2px; margin-right: 6px; }
+      @keyframes spin { to { transform: rotate(360deg); } }
+
+      @media (max-width: 880px) {
+        .controls { grid-template-columns: 1fr 1fr; }
+        .btn-primary { grid-column: 1 / -1; }
+        .bottom-grid { grid-template-columns: 1fr; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <header class="header">
+        <div class="brand">
+          <div class="logo">◎</div>
+          <div>
+            <h1>CryptoSight <span>Agent</span></h1>
+            <p class="tagline">Crypto forecasting · technical analysis · serverless preview</p>
+          </div>
+        </div>
+        <span class="demo-pill">DEMO · no backend</span>
+      </header>
+
+      <section class="controls card">
+        <div class="control">
+          <label>Cryptocurrency</label>
+          <select id="symbol">
+            <option value="bitcoin">Bitcoin (BTC)</option>
+            <option value="ethereum">Ethereum (ETH)</option>
+            <option value="solana">Solana (SOL)</option>
+            <option value="cardano">Cardano (ADA)</option>
+            <option value="ripple">XRP (XRP)</option>
+            <option value="dogecoin">Dogecoin (DOGE)</option>
+            <option value="binancecoin">BNB (BNB)</option>
+            <option value="avalanche-2">Avalanche (AVAX)</option>
+            <option value="chainlink">Chainlink (LINK)</option>
+            <option value="polkadot">Polkadot (DOT)</option>
+            <option value="litecoin">Litecoin (LTC)</option>
+            <option value="tron">TRON (TRX)</option>
+          </select>
+        </div>
+        <div class="control">
+          <label>History: <span class="control-value" id="daysLabel">30d</span></label>
+          <input type="range" id="days" min="0" max="3" step="1" value="2" />
+          <div class="ticks" id="daysTicks"></div>
+        </div>
+        <div class="control">
+          <label>Horizon: <span class="control-value" id="horizonLabel">7d</span></label>
+          <input type="range" id="horizon" min="0" max="2" step="1" value="1" />
+          <div class="ticks" id="horizonTicks"></div>
+        </div>
+        <button class="btn-primary" id="analyzeBtn">Analyze</button>
+      </section>
+
+      <div class="banner err hidden" id="errorBanner"></div>
+      <div class="banner warn hidden" id="sourceBanner"></div>
+
+      <section class="card">
+        <div class="chart-note">Historical price vs. forecast · gray band = confidence interval (~80%)</div>
+        <canvas id="priceChart" height="120"></canvas>
+        <div class="chart-note rsi-title">RSI (14) — overbought &gt;70 · oversold &lt;30</div>
+        <canvas id="rsiChart" height="48"></canvas>
+      </section>
+
+      <section class="bottom-grid">
+        <div class="card">
+          <h2 class="card-title">🧠 Agent reasoning</h2>
+          <div id="steps"><p class="muted">Loading…</p></div>
+        </div>
+        <div class="card">
+          <h2 class="card-title">📋 Analysis</h2>
+          <div id="report"><p class="muted">Loading…</p></div>
+        </div>
+      </section>
+
+      <footer class="footer">
+        CryptoSight Agent · Client-side demo · Data from CoinGecko · Not financial advice
+      </footer>
+    </div>
+
+    <script>
+      // ===================================================================
+      //  CryptoSight Agent — 100% client-side DEMO (no backend)
+      //  • Data: live CoinGecko (falls back to a synthetic series when offline)
+      //  • Indicators: Wilder RSI(14), MA7, MA30 computed in JS
+      //  • Forecast: linear regression + random-walk band (NOT Prophet)
+      //  • Analysis: rule-based (NOT the Claude agent / chat)
+      //  For real Prophet + the Claude agent and chat -> run the backend (see README).
+      // ===================================================================
+
+      const PALETTE = { price: '#3b82f6', forecast: '#22c55e', ma7: '#f59e0b', ma30: '#ef4444', band: 'rgba(148,163,184,.18)', rsi: '#a78bfa', red: '#ef4444', green: '#22c55e' };
+      const DAYS = [7, 14, 30, 90];
+      const HORIZONS = [3, 7, 14];
+      const COIN_META = {
+        bitcoin: { base: 65000, vol: 0.025, label: 'Bitcoin' },
+        ethereum: { base: 3500, vol: 0.03, label: 'Ethereum' },
+        solana: { base: 150, vol: 0.045, label: 'Solana' },
+        cardano: { base: 0.45, vol: 0.04, label: 'Cardano' },
+        ripple: { base: 0.55, vol: 0.04, label: 'XRP' },
+        dogecoin: { base: 0.13, vol: 0.05, label: 'Dogecoin' },
+        binancecoin: { base: 580, vol: 0.03, label: 'BNB' },
+        'avalanche-2': { base: 35, vol: 0.05, label: 'Avalanche' },
+        chainlink: { base: 15, vol: 0.045, label: 'Chainlink' },
+        polkadot: { base: 6.5, vol: 0.045, label: 'Polkadot' },
+        litecoin: { base: 85, vol: 0.035, label: 'Litecoin' },
+        tron: { base: 0.12, vol: 0.03, label: 'TRON' },
+      };
+
+      let priceChart = null, rsiChart = null;
+      const state = { symbol: 'bitcoin', days: 30, horizon: 7 };
+
+      const $ = (id) => document.getElementById(id);
+      const dayMs = 86400000;
+
+      function fmtUsd(v) {
+        if (v == null) return '';
+        const abs = Math.abs(v);
+        const max = abs < 1 ? 4 : abs < 100 ? 2 : 0;
+        return '$' + Number(v).toLocaleString('en-US', { maximumFractionDigits: max });
+      }
+      function tsToISO(ms) { return new Date(ms).toISOString().slice(0, 10); }
+      function isoMMDD(iso) { return iso ? iso.slice(5) : ''; }
+      function addDaysISO(iso, n) { return tsToISO(Date.parse(iso) + n * dayMs); }
+      function lastNonNull(arr) { for (let i = arr.length - 1; i >= 0; i--) if (arr[i] != null) return arr[i]; return null; }
+
+      // -------------------- data --------------------
+      function mulberry32(a) { return function () { a |= 0; a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+
+      function genSynthetic(symbol, days) {
+        const meta = COIN_META[symbol] || COIN_META.bitcoin;
+        let seed = 0; for (const c of symbol) seed += c.charCodeAt(0);
+        const rand = mulberry32(seed * 7919);
+        const n = days + 1;
+        const today = Date.now();
+        let price = meta.base * (0.85 + rand() * 0.1);
+        const drift = (rand() - 0.45) * 0.004;
+        const out = [];
+        for (let i = n - 1; i >= 0; i--) {
+          const ts = Math.floor((today - i * dayMs) / dayMs) * dayMs;
+          const shock = (rand() - 0.5) * 2 * meta.vol;
+          price = Math.max(0.0001, price * (1 + drift + shock));
+          out.push([ts, price]);
+        }
+        return out;
+      }
+
+      function resampleDaily(raw) {
+        const byDay = new Map();
+        for (const [ts, price] of raw) {
+          const day = Math.floor(ts / dayMs) * dayMs;
+          byDay.set(day, price); // last value of the day wins
+        }
+        return [...byDay.entries()].sort((a, b) => a[0] - b[0]).map(([ts, p]) => [ts, p]);
+      }
+
+      async function fetchLive(symbol, days) {
+        const url = `https://api.coingecko.com/api/v3/coins/${symbol}/market_chart?vs_currency=usd&days=${days}`;
+        const res = await fetch(url, { headers: { accept: 'application/json' } });
+        if (!res.ok) throw new Error(`CoinGecko responded ${res.status}`);
+        const data = await res.json();
+        if (!data.prices || !data.prices.length) throw new Error('CoinGecko returned no prices');
+        return resampleDaily(data.prices);
+      }
+
+      // -------------------- indicators --------------------
+      function sma(values, w) {
+        const out = new Array(values.length).fill(null);
+        let sum = 0;
+        for (let i = 0; i < values.length; i++) {
+          sum += values[i];
+          if (i >= w) sum -= values[i - w];
+          if (i >= w - 1) out[i] = +(sum / w).toFixed(4);
+        }
+        return out;
+      }
+
+      function wilderRSI(values, period = 14) {
+        const n = values.length;
+        const rsi = new Array(n).fill(null);
+        if (n <= period) return rsi;
+        let gain = 0, loss = 0;
+        for (let i = 1; i <= period; i++) {
+          const d = values[i] - values[i - 1];
+          if (d >= 0) gain += d; else loss -= d;
+        }
+        let avgGain = gain / period, avgLoss = loss / period;
+        rsi[period] = avgLoss === 0 ? 100 : +(100 - 100 / (1 + avgGain / avgLoss)).toFixed(4);
+        for (let i = period + 1; i < n; i++) {
+          const d = values[i] - values[i - 1];
+          const g = d > 0 ? d : 0, l = d < 0 ? -d : 0;
+          avgGain = (avgGain * (period - 1) + g) / period;
+          avgLoss = (avgLoss * (period - 1) + l) / period;
+          rsi[i] = avgLoss === 0 ? 100 : +(100 - 100 / (1 + avgGain / avgLoss)).toFixed(4);
+        }
+        return rsi;
+      }
+
+      // -------------------- forecast (JS approximation) --------------------
+      function forecast(prices, horizon, startISO) {
+        const y = prices.map((p) => p[1]);
+        const n = y.length;
+        let sx = 0, sy = 0, sxx = 0, sxy = 0;
+        for (let i = 0; i < n; i++) { sx += i; sy += y[i]; sxx += i * i; sxy += i * y[i]; }
+        const denom = n * sxx - sx * sx || 1;
+        const slope = (n * sxy - sx * sy) / denom;
+        const intercept = (sy - slope * sx) / n;
+        let diffs = 0, cnt = 0;
+        for (let i = 1; i < n; i++) { const d = y[i] - y[i - 1]; diffs += d * d; cnt++; }
+        const sigma = Math.sqrt(diffs / Math.max(cnt, 1));
+        const z = 1.28; // ~80%
+        const dates = [], yhat = [], lower = [], upper = [];
+        for (let s = 1; s <= horizon; s++) {
+          const val = intercept + slope * (n - 1 + s);
+          const band = z * sigma * Math.sqrt(s);
+          dates.push(addDaysISO(startISO, s));
+          yhat.push(+val.toFixed(4));
+          lower.push(+(val - band).toFixed(4));
+          upper.push(+(val + band).toFixed(4));
+        }
+        return { dates, yhat, yhat_lower: lower, yhat_upper: upper };
+      }
+
+      // -------------------- summaries + analysis (rules) --------------------
+      function interpretRSI(v) { return v >= 70 ? 'overbought' : v <= 30 ? 'oversold' : 'neutral'; }
+
+      function summaryPrices(symbol, hist, days) {
+        const first = hist[0].price, last = hist[hist.length - 1].price;
+        const chg = first ? (last - first) / first * 100 : 0;
+        const lo = Math.min(...hist.map((h) => h.price)), hi = Math.max(...hist.map((h) => h.price));
+        return `${hist.length} daily points for ${symbol}. Current price ${fmtUsd(last)}. Change ${chg >= 0 ? '+' : ''}${chg.toFixed(2)}% over ${days}d. Range ${fmtUsd(lo)}–${fmtUsd(hi)}.`;
+      }
+      function summaryIndicators(ind) {
+        const rsi = lastNonNull(ind.rsi), ma7 = lastNonNull(ind.ma7), ma30 = lastNonNull(ind.ma30);
+        const parts = [];
+        parts.push(rsi != null ? `RSI(14)=${rsi.toFixed(1)} (${interpretRSI(rsi)})` : 'RSI(14)=n/a (not enough data)');
+        if (ma7 != null) parts.push(`MA7=${fmtUsd(ma7)}`);
+        if (ma30 != null) parts.push(`MA30=${fmtUsd(ma30)}`);
+        if (ma7 != null && ma30 != null) parts.push(ma7 > ma30 ? 'MA7>MA30: bullish bias' : 'MA7<MA30: bearish bias');
+        return parts.join(' · ');
+      }
+      function summaryForecast(fc, last) {
+        if (!fc.yhat.length) return 'No forecast.';
+        const end = fc.yhat[fc.yhat.length - 1];
+        const chg = last ? (end - last) / last * 100 : 0;
+        return `Forecast ${fc.yhat.length}d ahead: ${fmtUsd(end)} (${chg >= 0 ? '+' : ''}${chg.toFixed(2)}%). Final band ${fmtUsd(fc.yhat_lower[fc.yhat_lower.length - 1])}–${fmtUsd(fc.yhat_upper[fc.yhat_upper.length - 1])}.`;
+      }
+
+      function buildAnalysis(symbol, hist, ind, fc, days, horizon) {
+        const first = hist[0].price, last = hist[hist.length - 1].price;
+        const chg = first ? (last - first) / first * 100 : 0;
+        const lo = Math.min(...hist.map((h) => h.price)), hi = Math.max(...hist.map((h) => h.price));
+        const rsi = lastNonNull(ind.rsi), ma7 = lastNonNull(ind.ma7), ma30 = lastNonNull(ind.ma30);
+        const end = fc.yhat.length ? fc.yhat[fc.yhat.length - 1] : last;
+        const fchg = last ? (end - last) / last * 100 : 0;
+        const trend = chg > 1 ? 'uptrend' : chg < -1 ? 'downtrend' : 'sideways';
+        const meta = COIN_META[symbol] || { label: symbol };
+        const L = [];
+        L.push(`## ${meta.label} analysis`);
+        L.push('> ⚙️ Client-side demo: forecast approximated in JS (not Prophet) and rule-based analysis (not the Claude agent).');
+        L.push(`**Recent trend (${days}d):** ${trend} (${chg >= 0 ? '+' : ''}${chg.toFixed(2)}%). Current price **${fmtUsd(last)}** (from ${fmtUsd(first)}).`);
+        L.push(`**Key levels:** support ~**${fmtUsd(lo)}** · resistance ~**${fmtUsd(hi)}**.`);
+        if (rsi != null) {
+          const nuance = rsi >= 70 ? 'Overbought zone: watch for a pullback.' : rsi <= 30 ? 'Oversold zone: a bounce is possible.' : 'No extreme conditions.';
+          L.push(`**RSI(14):** ${rsi.toFixed(1)} → ${interpretRSI(rsi)}. ${nuance}`);
+        } else {
+          L.push('**RSI(14):** not enough data for 14 periods (try more days).');
+        }
+        if (ma7 != null && ma30 != null) {
+          const cross = ma7 > ma30 ? 'MA7 above MA30 (short-term bullish signal)' : 'MA7 below MA30 (short-term bearish signal)';
+          L.push(`**Moving averages:** MA7 ${fmtUsd(ma7)} vs MA30 ${fmtUsd(ma30)} — ${cross}.`);
+        }
+        const dir = fchg > 0.5 ? 'up' : fchg < -0.5 ? 'down' : 'flat';
+        if (fc.yhat.length) {
+          L.push(`**Forecast (${horizon}d):** projected price **${fmtUsd(end)}** (${fchg >= 0 ? '+' : ''}${fchg.toFixed(2)}%), trending ${dir}. Confidence band ${fmtUsd(fc.yhat_lower[fc.yhat_lower.length - 1])}–${fmtUsd(fc.yhat_upper[fc.yhat_upper.length - 1])}.`);
+        }
+        L.push('_This is not financial advice._');
+        return L.join('\n\n');
+      }
+
+      function mdToHtml(md) {
+        const inline = (t) => t
+          .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+          .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+          .replace(/`(.+?)`/g, '<code>$1</code>')
+          .replace(/_(.+?)_/g, '<em>$1</em>');
+        return md.split('\n\n').map((block) => {
+          if (block.startsWith('## ')) return `<h2>${inline(block.slice(3))}</h2>`;
+          if (block.startsWith('> ')) return `<blockquote>${inline(block.slice(2))}</blockquote>`;
+          return `<p>${inline(block)}</p>`;
+        }).join('');
+      }
+
+      // -------------------- orchestration --------------------
+      async function analyze() {
+        const btn = $('analyzeBtn');
+        btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>Analyzing…';
+        $('errorBanner').classList.add('hidden');
+        $('steps').innerHTML = '<p class="muted">Calculating…</p>';
+        $('report').innerHTML = '<p class="muted">Calculating…</p>';
+
+        const { symbol, days, horizon } = state;
+        let raw, live = true, sourceMsg = '';
+        try {
+          raw = await fetchLive(symbol, days);
+          sourceMsg = `✓ Live data from CoinGecko (${raw.length} days of ${(COIN_META[symbol] || {}).label || symbol}).`;
+        } catch (e) {
+          live = false;
+          raw = genSynthetic(symbol, days);
+          sourceMsg = `⚠ Couldn't reach CoinGecko (${e.message}). Showing locally-generated sample data.`;
+        }
+
+        const banner = $('sourceBanner');
+        banner.textContent = sourceMsg;
+        banner.className = 'banner ' + (live ? 'ok' : 'warn');
+        banner.classList.remove('hidden');
+
+        const historical = raw.map(([ts, p]) => ({ date: tsToISO(ts), price: +p.toFixed(4) }));
+        const prices = historical.map((h) => h.price);
+        const indicators = { rsi: wilderRSI(prices, 14), ma7: sma(prices, 7), ma30: sma(prices, 30) };
+        const fc = forecast(raw, horizon, historical[historical.length - 1].date);
+
+        const last = prices[prices.length - 1];
+        const steps = [
+          { tool: 'get_price_history', input: { symbol, days }, output: summaryPrices(symbol, historical, days) },
+          { tool: 'calculate_indicators', input: { symbol }, output: summaryIndicators(indicators) },
+          { tool: 'run_forecast', input: { symbol, horizon }, output: summaryForecast(fc, last) },
+        ];
+        const analysis = buildAnalysis(symbol, historical, indicators, fc, days, horizon);
+        const payload = { symbol, generated_at: tsToISO(Date.now()), live, historical, forecast: fc, indicators, agent_steps: steps, analysis };
+
+        renderCharts(payload);
+        renderSteps(payload.agent_steps);
+        renderReport(payload);
+
+        btn.disabled = false; btn.textContent = 'Analyze';
+      }
+
+      // -------------------- render --------------------
+      const ICONS = { get_price_history: '💹', calculate_indicators: '📊', run_forecast: '🔮' };
+
+      function renderSteps(steps) {
+        const fmtInput = (i) => Object.entries(i).map(([k, v]) => `${k}: ${v}`).join(', ');
+        $('steps').innerHTML =
+          '<ol class="timeline">' +
+          steps.map((s, i) => `
+            <li class="timeline-item" style="animation-delay:${i * 0.14}s">
+              <div class="timeline-dot">${ICONS[s.tool] || '🛠️'}</div>
+              <div>
+                <div class="timeline-tool">${s.tool}</div>
+                <div class="timeline-input">→ ${fmtInput(s.input)}</div>
+                <div class="timeline-output">${s.output}</div>
+              </div>
+            </li>`).join('') +
+          '</ol>';
+      }
+
+      function renderReport(p) {
+        $('report').innerHTML = `
+          <div class="report-badges">
+            <span class="badge badge-symbol">${p.symbol.toUpperCase()}</span>
+            <span class="badge badge-date">${p.generated_at}</span>
+            <span class="badge badge-muted">${p.live ? 'live data' : 'sample data'} · JS demo</span>
+          </div>
+          <div class="markdown">${mdToHtml(p.analysis)}</div>`;
+      }
+
+      function renderCharts(p) {
+        const hist = p.historical;
+        const n = hist.length;
+        const labels = [...hist.map((h) => isoMMDD(h.date)), ...p.forecast.dates.map(isoMMDD)];
+        const lastPrice = hist[n - 1].price;
+        const nulls = (len) => new Array(len).fill(null);
+        const bridge = (arr) => hist.map((_, i) => (i === n - 1 ? lastPrice : null)).concat(arr);
+
+        const priceData = [...hist.map((h) => h.price), ...nulls(p.forecast.dates.length)];
+        const ma7Data = [...p.indicators.ma7, ...nulls(p.forecast.dates.length)];
+        const ma30Data = [...p.indicators.ma30, ...nulls(p.forecast.dates.length)];
+        const yhatData = bridge(p.forecast.yhat);
+        const lowerData = bridge(p.forecast.yhat_lower);
+        const upperData = bridge(p.forecast.yhat_upper);
+        const rsiData = [...p.indicators.rsi, ...nulls(p.forecast.dates.length)];
+
+        if (priceChart) priceChart.destroy();
+        if (rsiChart) rsiChart.destroy();
+
+        const grid = { color: '#272b36' };
+        const baseLine = { borderWidth: 2, pointRadius: 0, tension: 0.25, spanGaps: false };
+
+        priceChart = new Chart($('priceChart'), {
+          type: 'line',
+          data: {
+            labels,
+            datasets: [
+              { label: '_lower', data: lowerData, borderColor: 'transparent', backgroundColor: 'transparent', pointRadius: 0, fill: false },
+              { label: 'Interval 80%', data: upperData, borderColor: 'transparent', backgroundColor: PALETTE.band, pointRadius: 0, fill: '-1' },
+              { ...baseLine, label: 'Price', data: priceData, borderColor: PALETTE.price },
+              { ...baseLine, label: 'MA7', data: ma7Data, borderColor: PALETTE.ma7, borderWidth: 1.5 },
+              { ...baseLine, label: 'MA30', data: ma30Data, borderColor: PALETTE.ma30, borderWidth: 1.5 },
+              { ...baseLine, label: 'Forecast', data: yhatData, borderColor: PALETTE.forecast, borderDash: [5, 5] },
+            ],
+          },
+          options: {
+            responsive: true, interaction: { mode: 'index', intersect: false },
+            scales: {
+              x: { grid, ticks: { color: '#8b93a7', maxTicksLimit: 10 } },
+              y: { grid, ticks: { color: '#8b93a7', callback: (v) => fmtUsd(v) } },
+            },
+            plugins: {
+              legend: { labels: { color: '#e6e8ee', filter: (it) => !it.text.startsWith('_'), boxWidth: 12, usePointStyle: true } },
+              tooltip: { callbacks: { label: (c) => c.parsed.y == null ? null : `${c.dataset.label}: ${fmtUsd(c.parsed.y)}` } },
+            },
+          },
+        });
+
+        rsiChart = new Chart($('rsiChart'), {
+          type: 'line',
+          data: {
+            labels,
+            datasets: [
+              { ...baseLine, label: 'RSI', data: rsiData, borderColor: PALETTE.rsi },
+              { label: '_70', data: labels.map(() => 70), borderColor: PALETTE.red, borderDash: [4, 4], borderWidth: 1, pointRadius: 0, fill: false },
+              { label: '_30', data: labels.map(() => 30), borderColor: PALETTE.green, borderDash: [4, 4], borderWidth: 1, pointRadius: 0, fill: false },
+            ],
+          },
+          options: {
+            responsive: true, interaction: { mode: 'index', intersect: false },
+            scales: {
+              x: { grid, ticks: { color: '#8b93a7', maxTicksLimit: 10 } },
+              y: { min: 0, max: 100, grid, ticks: { color: '#8b93a7', stepSize: 25 } },
+            },
+            plugins: {
+              legend: { labels: { color: '#e6e8ee', filter: (it) => !it.text.startsWith('_'), boxWidth: 12, usePointStyle: true } },
+              tooltip: { callbacks: { label: (c) => c.dataset.label.startsWith('_') || c.parsed.y == null ? null : `RSI: ${c.parsed.y.toFixed(1)}` } },
+            },
+          },
+        });
+      }
+
+      // -------------------- controls --------------------
+      function renderTicks(el, options, value) {
+        el.innerHTML = options.map((o) => `<span class="tick${o === value ? ' active' : ''}">${o}</span>`).join('');
+      }
+      function wireControls() {
+        $('symbol').addEventListener('change', (e) => { state.symbol = e.target.value; });
+        $('days').addEventListener('input', (e) => {
+          state.days = DAYS[+e.target.value]; $('daysLabel').textContent = state.days + 'd'; renderTicks($('daysTicks'), DAYS, state.days);
+        });
+        $('horizon').addEventListener('input', (e) => {
+          state.horizon = HORIZONS[+e.target.value]; $('horizonLabel').textContent = state.horizon + 'd'; renderTicks($('horizonTicks'), HORIZONS, state.horizon);
+        });
+        $('analyzeBtn').addEventListener('click', analyze);
+        renderTicks($('daysTicks'), DAYS, state.days);
+        renderTicks($('horizonTicks'), HORIZONS, state.horizon);
+      }
+
+      wireControls();
+      analyze(); // run on load
+    </script>
+  </body>
+</html>

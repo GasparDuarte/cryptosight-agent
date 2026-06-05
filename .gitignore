@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.py[cod]
+venv/
+.venv/
+env/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+
+# Entornos / secretos — NUNCA commitear claves reales.
+# Se ignora cualquier .env (.env, .env.local, .env.production…) salvo la plantilla.
+.env
+.env.*
+!.env.example
+
+# Node / frontend
+node_modules/
+dist/
+.vite/
+*.log
+npm-debug.log*
+
+# Prophet / cmdstan
+*.stan
+*.bin
+
+# Editores / SO
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
