@@ -34,11 +34,12 @@ with concrete numbers and dates. You can also **chat** with it to ask follow-ups
 
 ## 🖼️ Screenshots
 
-> _Placeholders — replace with real screenshots once you run it._
-
-| Dashboard | Agent reasoning + chat |
+| Dashboard | Agent reasoning & risk profile |
 | --- | --- |
-| `docs/screenshot-dashboard.png` | `docs/screenshot-chat.png` |
+| ![CryptoSight dashboard — controls, price/forecast chart and RSI panel](docs/screenshot-dashboard.png) | ![Agent reasoning timeline and computed risk profile](docs/screenshot-agent.png) |
+
+> _Captured in deterministic mode (no API key). Add an `ANTHROPIC_API_KEY` to light up the
+> Claude agent's live ReAct reasoning and the chat assistant._
 
 ---
 
